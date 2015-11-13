@@ -23,6 +23,7 @@ RM					= rm.exe
 MKDIR				= mkdir.exe
 TOUCH				= touch.exe
 DOXYGEN				= doxygen.exe
+OPENOCD				= openocd.exe
 
 ######################################################################################
 # Custom options for cortex-m and cortex-r processors 
@@ -139,9 +140,10 @@ clean:
 	@$(ECHO) clean binary file ...
 	@$(RM) -rf bin
 
-flash: $(TARGET)
-	ST-LINK_CLI.exe -c SWD -p "$(PROGRAM).hex" -Rst -Run
-	@cmd /c color 07
+flash:
+	@$(ECHO)  
+	@$(ECHO) Load file to flash
+	@$(OPENOCD) -f $(PROJECT_OPENOCD_CONFIG) -c "init" -c "reset halt" -c "flash write_image erase $(TOP)/bin/$(TARGET).hex" -c "reset run" -c "shutdown" 2> /dev/null
 
 document:
 	@$(ECHO) Generating document ...
@@ -150,7 +152,7 @@ document:
 	@$(ECHO) Done.
 
 openocd:
-	@openocd -f $(PROJECT_OPENOCD_CONFIG)
+	@$(OPENOCD) -f $(PROJECT_OPENOCD_CONFIG) 
 	
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),flash)
