@@ -3,25 +3,29 @@ TOP = .
 
 # General project files
 VPATH					:=	$(TOP)/src						\
+							$(TOP)/src/system				\
                              
 PROJECT_INC_PATHS		:=	-I$(TOP)/inc					\
 
 PROJECT_SOURCE			:=	startup_stm32f446xx.s			\
-							main.c							\
 							system_stm32f4xx.c				\
 							stm32f4xx_it.c					\
+							main.c							\
+							syscall.c						\
+							debug.c							\
+
 
 # STM32 Library
-VPATH					+=  $(TOP)/src/STM32F4xx_StdPeriph_Driver/src			\
+VPATH					+=  $(TOP)/lib/STM32F4xx_StdPeriph_Driver/src			\
 
-PROJECT_INC_PATHS		+=	-I$(TOP)/src/STM32F4xx_StdPeriph_Driver/inc			\
+PROJECT_INC_PATHS		+=	-I$(TOP)/lib/STM32F4xx_StdPeriph_Driver/inc			\
 
 PROJECT_SOURCE			+=	misc.c                       \
 							stm32f4xx_gpio.c             \
 							stm32f4xx_rcc.c              \
+							stm32f4xx_usart.c            \
 #							stm32f4xx_rtc.c              \
 #							stm32f4xx_tim.c              \
-#							stm32f4xx_usart.c            \
 #							stm32f4xx_adc.c              \
 #							stm32f4xx_can.c              \
 #							stm32f4xx_cec.c              \
@@ -71,3 +75,6 @@ PROJECT_DOXYGEN_CONFIG = config.doxyfile
 PROJECT_OPENOCD_CONFIG = board/st_nucleo_f4.cfg
 
 sinclude $(TOP)/common.mk
+
+# Force to update the builded time in main.c
+obj/main.o : force 
