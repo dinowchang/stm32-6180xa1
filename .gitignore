@@ -1,0 +1,8 @@
+# Ignore eclipse files
+/.settings/
+.cproject
+.project
+
+# Ignore binary and object file made by makefile
+/bin/
+/obj/
