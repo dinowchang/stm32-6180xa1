@@ -16,7 +16,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include <sys/stat.h>
 #include <errno.h>
-#include "stm32f4xx.h"
+#include "debug.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -100,9 +100,8 @@ int _write(int file, char *ptr, int len)
 
 	for (todo = 0; todo < len; todo++)
 	{
-        USART_SendData(USART2, *ptr);
+		DEBUG_SendData(*ptr);
         ptr++;
-        while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
 	}
 	return len;
 }

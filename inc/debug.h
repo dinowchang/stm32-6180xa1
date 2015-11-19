@@ -17,6 +17,7 @@
 #define __DEBUG_H_
 
 /* Includes ------------------------------------------------------------------*/
+#include "type.h"
 #include "config.h"
 
 /* Exported types ------------------------------------------------------------*/
@@ -35,5 +36,6 @@
 
 /* Exported functions ------------------------------------------------------- */
 void DEBUG_Init(void);
+void DEBUG_SendData(uint16_t Data);
 
 #endif /* __DEBUG_H_ */

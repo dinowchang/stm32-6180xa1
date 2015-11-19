@@ -52,6 +52,8 @@ int main(void)
   RCC_GetClocksFreq(&RCC_Clocks);
   SysTick_Config(RCC_Clocks.HCLK_Frequency / 1000);
   
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+
   DEBUG_Init();
 
   DEBUG_printf(DBG_SYSINFO, "\nBuild on %s at %s\n", __DATE__, __TIME__);
