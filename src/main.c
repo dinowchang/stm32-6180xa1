@@ -16,10 +16,12 @@
 /* Includes ------------------------------------------------------------------*/
 #include <stdio.h>
 
-#include "main.h"
+#include "stm32f4xx.h"
 #include "type.h"
-
 #include "debug.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "blink.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -40,30 +42,22 @@ void Delay(__IO uint32_t nTime);
   */
 int main(void)
 {
- 
-  /*!< At this stage the microcontroller clock setting is already configured, 
-       this is done through SystemInit() function which is called from startup
-       files before to branch to application main.
-       To reconfigure the default setting of SystemInit() function, 
-       refer to system_stm32f4xx.c file */
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 
-  /* SysTick end of count event each 10ms */
-  RCC_ClocksTypeDef RCC_Clocks;
-  RCC_GetClocksFreq(&RCC_Clocks);
-  SysTick_Config(RCC_Clocks.HCLK_Frequency / 1000);
-  
-  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+	DEBUG_Init();
+	DEBUG_printf(DBG_SYSINFO, "\nBuild on %s at %s\n", __DATE__, __TIME__);
+	DEBUG_printf(DBG_SYSINFO, "System clock = %ld Hz\n", SystemCoreClock);
+	DEBUG_printf(DBG_SYSINFO, "Hello World\n");
 
-  DEBUG_Init();
+	Blink_Init();
 
-  DEBUG_printf(DBG_SYSINFO, "\nBuild on %s at %s\n", __DATE__, __TIME__);
-  DEBUG_printf(DBG_SYSINFO, "System clock = %ld Hz\n", SystemCoreClock);
-  DEBUG_printf(DBG_SYSINFO, "Hello World\n");
+	/* Start the scheduler. */
+	vTaskStartScheduler();
 
-  /* Infinite loop */
-  while (1)
-  {
-  }
+	/* Infinite loop */
+	while (1)
+	{
+	}
 }
 
 /**
@@ -78,18 +72,6 @@ void Delay(__IO uint32_t nTime)
   while(uwTimingDelay != 0);
 }
 
-/**
-  * @brief  Decrements the TimingDelay variable.
-  * @param  None
-  * @retval None
-  */
-void TimingDelay_Decrement(void)
-{
-	if (uwTimingDelay != 0x00)
-	{
-		uwTimingDelay--;
-	}
-}
 
 #ifdef  USE_FULL_ASSERT
 
@@ -112,3 +94,54 @@ void assert_failed(uint8_t* file, uint32_t line)
 }
 #endif
 
+/*-----------------------------------------------------------*/
+
+void vApplicationTickHook( void )
+{
+
+}
+
+/*-----------------------------------------------------------*/
+void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName )
+{
+	/* This function will get called if a task overflows its stack.   If the
+	parameters are corrupt then inspect pxCurrentTCB to find which was the
+	offending task. */
+
+	( void ) pxTask;
+	( void ) pcTaskName;
+
+	for( ;; );
+}
+
+/*-----------------------------------------------------------*/
+
+void vApplicationMallocFailedHook( void )
+{
+	/* vApplicationMallocFailedHook() will only be called if
+	configUSE_MALLOC_FAILED_HOOK is set to 1 in FreeRTOSConfig.h.  It is a hook
+	function that will get called if a call to pvPortMalloc() fails.
+	pvPortMalloc() is called internally by the kernel whenever a task, queue,
+	timer or semaphore is created.  It is also called by various parts of the
+	demo application.  If heap_1.c or heap_2.c are used, then the size of the
+	heap available to pvPortMalloc() is defined by configTOTAL_HEAP_SIZE in
+	FreeRTOSConfig.h, and the xPortGetFreeHeapSize() API function can be used
+	to query the size of free heap space that remains (although it does not
+	provide information on how the remaining heap might be fragmented). */
+	taskDISABLE_INTERRUPTS();
+	for( ;; );
+}
+/*-----------------------------------------------------------*/
+
+void vApplicationIdleHook( void )
+{
+	/* vApplicationIdleHook() will only be called if configUSE_IDLE_HOOK is set
+	to 1 in FreeRTOSConfig.h.  It will be called on each iteration of the idle
+	task.  It is essential that code added to this hook function never attempts
+	to block in any way (for example, call xQueueReceive() with a block time
+	specified, or call vTaskDelay()).  If the application makes use of the
+	vTaskDelete() API function (as this demo application does) then it is also
+	important that vApplicationIdleHook() is permitted to return to its calling
+	function, because it is the responsibility of the idle task to clean up
+	memory allocated by the kernel to any task that has since been deleted. */
+}

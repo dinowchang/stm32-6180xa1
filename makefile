@@ -13,12 +13,26 @@ PROJECT_SOURCE			:=	startup_stm32f446xx.s			\
 							main.c							\
 							syscall.c						\
 							debug.c							\
+							blink.c							\
 
+# FreeRTOS
+VPATH					+=  $(TOP)/lib/FreeRTOS
+
+PROJECT_INC_PATHS		+=	-I$(TOP)/lib/FreeRTOS/include
+
+PROJECT_SOURCE			+=	croutine.c						\
+							event_groups.c					\
+							heap_2.c						\
+							list.c							\
+							port.c							\
+							queue.c							\
+							tasks.c							\
+							timers.c
 
 # STM32 Library
-VPATH					+=  $(TOP)/lib/STM32F4xx_StdPeriph_Driver/src			\
+VPATH					+=  $(TOP)/lib/STM32F4xx_StdPeriph_Driver/src
 
-PROJECT_INC_PATHS		+=	-I$(TOP)/lib/STM32F4xx_StdPeriph_Driver/inc			\
+PROJECT_INC_PATHS		+=	-I$(TOP)/lib/STM32F4xx_StdPeriph_Driver/inc
 
 PROJECT_SOURCE			+=	misc.c                       \
 							stm32f4xx_gpio.c             \

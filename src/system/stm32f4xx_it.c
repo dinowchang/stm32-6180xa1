@@ -29,7 +29,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_it.h"
-#include "main.h"
 
 /** @addtogroup Template_Project
   * @{
@@ -107,6 +106,7 @@ void UsageFault_Handler(void)
   }
 }
 
+#if 0	// SVC_Handler used by FreeRTOS
 /**
   * @brief  This function handles SVCall exception.
   * @param  None
@@ -115,6 +115,7 @@ void UsageFault_Handler(void)
 void SVC_Handler(void)
 {
 }
+#endif
 
 /**
   * @brief  This function handles Debug Monitor exception.
@@ -123,25 +124,6 @@ void SVC_Handler(void)
   */
 void DebugMon_Handler(void)
 {
-}
-
-/**
-  * @brief  This function handles PendSVC exception.
-  * @param  None
-  * @retval None
-  */
-void PendSV_Handler(void)
-{
-}
-
-/**
-  * @brief  This function handles SysTick Handler.
-  * @param  None
-  * @retval None
-  */
-void SysTick_Handler(void)
-{
-  TimingDelay_Decrement();
 }
 
 /******************************************************************************/
