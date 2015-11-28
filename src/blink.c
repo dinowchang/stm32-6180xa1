@@ -79,5 +79,5 @@ static void Blink_Task( void *pvParameters )
 
 void Blink_Init(void)
 {
-	xTaskCreate( Blink_Task, "LCD", configMINIMAL_STACK_SIZE, NULL, BLINK_TASK_PRIORITY, NULL );
+	xTaskCreate( Blink_Task, "LED", configMINIMAL_STACK_SIZE, NULL, BLINK_TASK_PRIORITY, NULL );
 }
