@@ -20,15 +20,25 @@
 #include <stdio.h>
 #include "type.h"
 #include "config.h"
+#include "FreeRTOS.h"
+#include "semphr.h"
+
 /* Exported types ------------------------------------------------------------*/
 
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
 #ifdef DEBUG
-#define DEBUG_printf(CONDITION, args...)	do									\
-									{											\
-										if(CONDITION)	printf( args );			\
+#define DEBUG_printf(CONDITION, args...)	do												\
+									{														\
+										if(CONDITION)										\
+										{													\
+											if(xSemaphoreTake(xPrintMutex, portMAX_DELAY))	\
+											{												\
+												printf( args );								\
+												xSemaphoreGive(xPrintMutex);				\
+											}												\
+										}													\
 									}while(0)
 #else
 #define DEBUG_printf(CONDITION, args...)	((void)0)
@@ -37,5 +47,6 @@
 /* Exported functions ------------------------------------------------------- */
 void DEBUG_Init(void);
 void DEBUG_SendData(uint16_t Data);
+extern SemaphoreHandle_t xPrintMutex;
 
 #endif /* __DEBUG_H_ */

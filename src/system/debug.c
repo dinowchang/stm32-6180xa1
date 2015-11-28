@@ -15,10 +15,13 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "config.h"
+#include "assert.h"
+#include "type.h"
 #include "debug.h"
 #include "stm32f4xx.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -28,6 +31,7 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+SemaphoreHandle_t xPrintMutex;
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -38,6 +42,10 @@
  */
 void DEBUG_Init(void)
 {
+	xPrintMutex = xSemaphoreCreateMutex();
+
+	assert(xPrintMutex != NULL);
+
 #if DEBUG_PORT == DEBUG_PORT_USART2
 	// Enable clock of GPIOA
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
@@ -124,6 +132,10 @@ void DEBUG_Init(void)
 
 }
 
+/**
+ * @brief Send data to debug port
+ * @param Data
+ */
 void DEBUG_SendData(uint16_t Data)
 {
 #if DEBUG_PORT == DEBUG_PORT_USART2
