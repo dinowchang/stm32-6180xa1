@@ -17,13 +17,13 @@
 #include "config.h"
 #include "debug.h"
 #include "stm32f4xx.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
-#define TEST_USART_RX_ECHO		0
 #define DEBUG_BUAD_RATE			115200
-#define DEBUG_PORT				DEBUG_PORT_USART2	///<  DEBUG_PORT could be set either to DEBUG_PORT_USART2 or DEBUG_PORT_USART3
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -134,41 +134,38 @@ void DEBUG_SendData(uint16_t Data)
     while(USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
 #endif
 }
-
-
-#if DEBUG_PORT == DEBUG_PORT_USART2
 /**
- * @brief  USART2 interrupt handler
+ *
+ * @param file
+ * @param line
+ * @param func
+ * @param expression
  */
-void USART2_IRQHandler(void)
+void __assert_func(const char *file, int line, const char *func, const char *expression)
 {
-	while (USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)
+	taskDISABLE_INTERRUPTS();
+	while (1)
 	{
-#if TEST_USART_RX_ECHO
-		char data = USART_ReceiveData(USART2);
-		USART_SendData(USART2, data);
-		while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
-#else
-		USART_ReceiveData(USART2);
-#endif
 	}
 }
 
-#elif DEBUG_PORT == DEBUG_PORT_USART3
+#ifdef  USE_FULL_ASSERT
+
 /**
- * @brief  USART3 interrupt handler
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
  */
-void USART3_IRQHandler(void)
+void assert_failed(uint8_t* file, uint32_t line)
 {
-	while (USART_GetITStatus(USART3, USART_IT_RXNE) != RESET)
+	/* User can add his own implementation to report the file name and line number,
+	 ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+
+	/* Infinite loop */
+	while (1)
 	{
-#if TEST_USART_RX_ECHO
-		char data = USART_ReceiveData(USART3);
-		USART_SendData(USART3, data);
-		while(USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
-#else
-		USART_ReceiveData(USART3);
-#endif
 	}
 }
 #endif

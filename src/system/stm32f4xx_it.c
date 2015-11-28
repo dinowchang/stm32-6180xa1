@@ -28,8 +28,10 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "config.h"
 #include "stm32f4xx_it.h"
-#include "main.h"
+#include "debug.h"
+#include "command.h"
 
 /** @addtogroup Template_Project
   * @{
@@ -107,6 +109,7 @@ void UsageFault_Handler(void)
   }
 }
 
+#if 0	// SVC_Handler used by FreeRTOS
 /**
   * @brief  This function handles SVCall exception.
   * @param  None
@@ -115,6 +118,7 @@ void UsageFault_Handler(void)
 void SVC_Handler(void)
 {
 }
+#endif
 
 /**
   * @brief  This function handles Debug Monitor exception.
@@ -123,25 +127,6 @@ void SVC_Handler(void)
   */
 void DebugMon_Handler(void)
 {
-}
-
-/**
-  * @brief  This function handles PendSVC exception.
-  * @param  None
-  * @retval None
-  */
-void PendSV_Handler(void)
-{
-}
-
-/**
-  * @brief  This function handles SysTick Handler.
-  * @param  None
-  * @retval None
-  */
-void SysTick_Handler(void)
-{
-  TimingDelay_Decrement();
 }
 
 /******************************************************************************/
@@ -159,6 +144,47 @@ void SysTick_Handler(void)
 /*void PPP_IRQHandler(void)
 {
 }*/
+
+#if DEBUG_PORT == DEBUG_PORT_USART2
+/**
+ * @brief  USART2 interrupt handler
+ */
+void USART2_IRQHandler(void)
+{
+	char data;
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+	while (USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)
+	{
+#if TEST_USART_RX_ECHO
+		data = USART_ReceiveData(USART2);
+		USART_SendData(USART2, data);
+		while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
+#else
+		data = USART_ReceiveData(USART2);
+		xQueueSendFromISR(xCommandQueue, &data, &xHigherPriorityTaskWoken);
+#endif
+	}
+}
+
+#elif DEBUG_PORT == DEBUG_PORT_USART3
+/**
+ * @brief  USART3 interrupt handler
+ */
+void USART3_IRQHandler(void)
+{
+	while (USART_GetITStatus(USART3, USART_IT_RXNE) != RESET)
+	{
+#if TEST_USART_RX_ECHO
+		char data = USART_ReceiveData(USART3);
+		USART_SendData(USART3, data);
+		while(USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
+#else
+		USART_ReceiveData(USART3);
+#endif
+	}
+}
+#endif
+
 
 /**
   * @}

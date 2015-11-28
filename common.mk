@@ -87,7 +87,7 @@ MAKEALL_DEPEND		=
 SYS_LIBRARIES		= -lc -lnosys
 SYS_LD_FLAGS		= --specs=nano.specs 
 
-CFLAGS				= $(MCU_CC_FLAGS) $(INCLUDE_DIR)  $(PROJECT_SYMBOLS) $(PROJECT_INC_PATHS) -g -fno-common -O3 -Wall -Werror -finline-functions -flto -ffunction-sections -fdata-sections -fno-builtin
+CFLAGS				= $(MCU_CC_FLAGS) $(INCLUDE_DIR)  $(PROJECT_SYMBOLS) $(PROJECT_INC_PATHS) -g -fno-common -O3 -Wall -Werror -finline-functions -ffunction-sections -fdata-sections -fno-builtin
 AFLAGS				= $(MCU_CC_FLAGS)
 LFLAGS				= $(MCU_CC_FLAGS) -L$(MCU_LIB_PATH) $(SYS_LIBRARIES) $(SYS_LD_FLAGS) -Wl,--gc-sections -Wl,-Map,$(PROGRAM).map
 
@@ -159,7 +159,7 @@ ifneq ($(MAKECMDGOALS),flash)
 ifneq ($(MAKECMDGOALS),document)
 ifneq ($(MAKECMDGOALS),dis)
 ifneq ($(MAKECMDGOALS),openocd)
-#sinclude $(DEPENDS_S) $(DEPENDS_C)
+sinclude $(DEPENDS_S) $(DEPENDS_C)
 endif
 endif
 endif
