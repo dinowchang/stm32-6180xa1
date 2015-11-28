@@ -162,5 +162,9 @@ standard names. */
 #define xPortPendSVHandler PendSV_Handler
 #define xPortSysTickHandler SysTick_Handler
 
+
+#define configCOMMAND_INT_MAX_OUTPUT_SIZE 64
+
+
 #endif /* FREERTOS_CONFIG_H */
 

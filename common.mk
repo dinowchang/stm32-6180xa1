@@ -159,7 +159,7 @@ ifneq ($(MAKECMDGOALS),flash)
 ifneq ($(MAKECMDGOALS),document)
 ifneq ($(MAKECMDGOALS),dis)
 ifneq ($(MAKECMDGOALS),openocd)
-#sinclude $(DEPENDS_S) $(DEPENDS_C)
+sinclude $(DEPENDS_S) $(DEPENDS_C)
 endif
 endif
 endif

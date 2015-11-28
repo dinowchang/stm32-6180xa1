@@ -14,6 +14,7 @@ PROJECT_SOURCE			:=	startup_stm32f446xx.s			\
 							syscall.c						\
 							debug.c							\
 							blink.c							\
+							command.c						\
 
 # FreeRTOS
 VPATH					+=  $(TOP)/lib/FreeRTOS
@@ -28,6 +29,13 @@ PROJECT_SOURCE			+=	croutine.c						\
 							queue.c							\
 							tasks.c							\
 							timers.c
+
+# FreeRTOS-Plus-CLI
+VPATH					+=  $(TOP)/lib/FreeRTOS-Plus-CLI
+
+PROJECT_INC_PATHS		+=	-I$(TOP)/lib/FreeRTOS-Plus-CLI
+
+PROJECT_SOURCE			+=	FreeRTOS_CLI.c						
 
 # STM32 Library
 VPATH					+=  $(TOP)/lib/STM32F4xx_StdPeriph_Driver/src
