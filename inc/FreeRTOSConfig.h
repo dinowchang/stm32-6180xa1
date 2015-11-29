@@ -105,7 +105,6 @@
 #define configUSE_MALLOC_FAILED_HOOK	1
 #define configUSE_APPLICATION_TASK_TAG	0
 #define configUSE_COUNTING_SEMAPHORES	1
-#define configGENERATE_RUN_TIME_STATS	0
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES 		0
@@ -126,6 +125,11 @@ to exclude the API function. */
 #define INCLUDE_vTaskSuspend			1
 #define INCLUDE_vTaskDelayUntil			1
 #define INCLUDE_vTaskDelay				1
+
+/* Run time and task stats gathering related definitions. */
+#define configGENERATE_RUN_TIME_STATS           0
+#define configUSE_TRACE_FACILITY                1
+#define configUSE_STATS_FORMATTING_FUNCTIONS    1
 
 /* Cortex-M specific definitions. */
 #ifdef __NVIC_PRIO_BITS
@@ -163,7 +167,7 @@ standard names. */
 #define xPortSysTickHandler SysTick_Handler
 
 
-#define configCOMMAND_INT_MAX_OUTPUT_SIZE 64
+#define configCOMMAND_INT_MAX_OUTPUT_SIZE 1024
 
 
 #endif /* FREERTOS_CONFIG_H */
