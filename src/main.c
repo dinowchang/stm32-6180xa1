@@ -22,6 +22,7 @@
 #include "debug.h"
 #include "blink.h"
 #include "command.h"
+#include "driver/i2c.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -45,12 +46,9 @@ int main(void)
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 
 	DEBUG_Init();
-	DEBUG_printf(DBG_SYSINFO, "\nBuild on %s at %s\n", __DATE__, __TIME__);
-	DEBUG_printf(DBG_SYSINFO, "System clock = %ld Hz\n", SystemCoreClock);
-	DEBUG_printf(DBG_SYSINFO, "Hello World\n");
-
 	Blink_Init();
 	COMM_Init();
+	I2C1_Init();
 
 	/* Start the scheduler. */
 	vTaskStartScheduler();

@@ -20,11 +20,10 @@
 #include "type.h"
 #include "stm32f4xx.h"
 #include "FreeRTOS.h"
+#include "FreeRTOS_CLI.h"
 #include "task.h"
 #include "command.h"
 #include "debug.h"
-#include "debug.h"
-#include "FreeRTOS_CLI.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -37,6 +36,7 @@
 #define DBG_COMM							TRUE
 
 #define CHAR_ASCII_DEL						( 0x7F ) 							// DEL acts as a backspace.
+#define CHAR_ASCII_ESC						( 0x1B ) 							// ESCAPE Key
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -57,11 +57,13 @@ static void COMM_Task( void *pvParameters )
 {
 	char data;
 	uint8_t inputIndex = 0;
+	uint8_t controlModeIndex = 0;
 	static char inputString[MAX_INPUT_SIZE], lastInputString[MAX_INPUT_SIZE];
 	char *outputString;
 	BaseType_t ret;
 
 	outputString = FreeRTOS_CLIGetOutputBuffer();
+	DEBUG_printf(DBG_COMM, "\nBuild on %s at %s. ", __DATE__, __TIME__);
 	DEBUG_printf(DBG_COMM, "%s", pcWelcomeMessage);
 	fflush(stdout);
 
@@ -95,6 +97,41 @@ static void COMM_Task( void *pvParameters )
 
 			DEBUG_printf(DBG_COMM, "%s", pcEndOfOutputMessage);
 			fflush(stdout);
+
+		}
+		else if (data == CHAR_ASCII_ESC)
+		{
+			controlModeIndex = 1;
+		}
+		else if (controlModeIndex != 0)
+		{
+			if( controlModeIndex == 1 )
+			{
+				if (data == '[')
+					controlModeIndex = 2;
+				else
+					controlModeIndex = 0;
+			}
+			else if( controlModeIndex == 2 )
+			{
+				if (data == 'A')
+				{
+					while(inputIndex > 0)
+					{
+						inputIndex--;
+						inputString[inputIndex] = '\0';
+						DEBUG_printf(DBG_COMM, "\b \b");
+						fflush(stdout);
+					}
+					strcpy(inputString, lastInputString);
+					DEBUG_printf(DBG_COMM, "%s", inputString);
+					inputIndex = strlen(inputString);
+					fflush(stdout);
+				}
+				controlModeIndex = 0;
+			}
+			else
+				controlModeIndex = 0;
 
 		}
 		else if ((data == '\b') || (data == CHAR_ASCII_DEL))

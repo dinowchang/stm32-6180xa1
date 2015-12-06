@@ -122,12 +122,13 @@ caddr_t _sbrk(int incr)
 		heap_end = &_end;
 	}
 	prev_heap_end = heap_end;
+#if 0 // this check will fail in FreeRTOS task
 	if (heap_end + incr > stack_ptr)
 	{
 		_write(1, "Heap and stack collision\n", 25);
 		while(1);
 	}
-
+#endif
 	heap_end += incr;
 	return (caddr_t) prev_heap_end;
 }

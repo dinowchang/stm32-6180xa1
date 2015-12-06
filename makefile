@@ -15,6 +15,13 @@ PROJECT_SOURCE			:=	startup_stm32f446xx.s			\
 							debug.c							\
 							blink.c							\
 							command.c						\
+							util.c							\
+
+# Drivers
+VPATH					+=  $(TOP)/src/driver
+
+PROJECT_SOURCE			+=	i2c.c							\
+
 
 # FreeRTOS
 VPATH					+=  $(TOP)/lib/FreeRTOS
@@ -44,6 +51,7 @@ PROJECT_INC_PATHS		+=	-I$(TOP)/lib/STM32F4xx_StdPeriph_Driver/inc
 
 PROJECT_SOURCE			+=	misc.c                       \
 							stm32f4xx_gpio.c             \
+							stm32f4xx_i2c.c              \
 							stm32f4xx_rcc.c              \
 							stm32f4xx_usart.c            \
 #							stm32f4xx_rtc.c              \
@@ -99,4 +107,4 @@ PROJECT_OPENOCD_CONFIG = board/st_nucleo_f4.cfg
 sinclude $(TOP)/common.mk
 
 # Force to update the builded time in main.c
-obj/main.o : force 
+obj/command.o : force 
