@@ -43,7 +43,7 @@
 /* Private variables ---------------------------------------------------------*/
 QueueHandle_t xCommandQueue;
 static const char * const pcWelcomeMessage = "FreeRTOS command server.\r\nType Help to view a list of registered commands.\r\n\r\n>";
-static const char * const pcEndOfOutputMessage = "\r\n[Press ENTER to execute the previous command again]\r\n>";
+static const char * const pcEndOfOutputMessage = "\r\n[Press ENTER to execute the previous command again]\r\n[Press UP ARROW to show the previous command]\r\n>";
 
 
 /* Private function prototypes -----------------------------------------------*/
@@ -114,7 +114,7 @@ static void COMM_Task( void *pvParameters )
 			}
 			else if( controlModeIndex == 2 )
 			{
-				if (data == 'A')
+				if (data == 'A') // UP ARROR KEY: Show last command
 				{
 					while(inputIndex > 0)
 					{
@@ -210,7 +210,7 @@ static BaseType_t prvTaskStatsCommand(char *pcWriteBuffer, size_t xWriteBufferLe
 static const CLI_Command_Definition_t xTaskStats =
 {
 	"task-stats", /* The command string to type. */
-	"\r\ntask-stats:\r\n Displays a table showing the state of each FreeRTOS task\r\n",
+	"task-stats:\n\tDisplays a table showing the state of each FreeRTOS task\n",
 	prvTaskStatsCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };

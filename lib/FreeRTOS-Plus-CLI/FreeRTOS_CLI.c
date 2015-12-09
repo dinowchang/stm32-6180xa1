@@ -83,7 +83,7 @@ of the list of registered commands. */
 static const CLI_Command_Definition_t xHelpCommand =
 {
 	"help",
-	"\r\nhelp:\r\n Lists all the registered commands\r\n\r\n",
+	"\nhelp:\n\tLists all the registered commands\n",
 	prvHelpCommand,
 	0
 };
