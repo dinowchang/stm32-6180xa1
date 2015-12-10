@@ -35,14 +35,14 @@
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
-	uint8_t direction;							// Transmitter / Receiver
+	volatile uint8_t direction;					// Transmitter / Receiver
 	uint8_t slaveAddr;							// 7 bits address only
 	uint16_t regAddr; 							// 8 bits or 16 bits register address of slave device
 	uint8_t regAddrLen;							// type of register address
 	uint8_t data[I2C_MAX_TRANSFER_LENGTH];		// data buffer
-	uint8_t dataLen;							// Length of data
-	uint8_t *dataPtr;							// transfer position
-	uint8_t status;
+	volatile uint8_t dataLen;					// Length of data
+	volatile uint8_t *dataPtr;					// transfer position
+	volatile uint8_t status;
 	SemaphoreHandle_t lock;
 	SemaphoreHandle_t finishSemaphore;
 } i2cPacket_t;
@@ -67,15 +67,10 @@ void I2C1_EV_IRQHandler(void)
 		else if(I2C_GetITStatus(I2C1, I2C_IT_ADDR)== SET)
 		{
 			if (i2c1Handler.dataLen == 1)
-			{
-				// wait BTF
-				I2C_ITConfig(I2C1, I2C_IT_BUF, DISABLE);
-			}
+				I2C_ITConfig(I2C1, I2C_IT_BUF, DISABLE); // wait BTF
 			else
-			{
-				// wait TXE
-				I2C_ITConfig(I2C1, I2C_IT_BUF, ENABLE);
-			}
+				I2C_ITConfig(I2C1, I2C_IT_BUF, ENABLE); // wait TXE
+
 			// reading SR1 register followed reading SR2 to clear ADDR register
 			(void) (I2C1->SR1);
 			(void) (I2C1->SR2);
@@ -86,10 +81,8 @@ void I2C1_EV_IRQHandler(void)
 		else if((I2C_GetITStatus(I2C1, I2C_IT_TXE)== SET)&&(I2C_GetITStatus(I2C1, I2C_IT_BTF) == RESET))
 		{
 			if (i2c1Handler.dataLen == 1)
-			{
-				// wait BTF
-				I2C_ITConfig(I2C1, I2C_IT_BUF, DISABLE);
-			}
+				I2C_ITConfig(I2C1, I2C_IT_BUF, DISABLE); // wait BTF
+
 			I2C_SendData(I2C1, i2c1Handler.dataPtr[0]);
 			i2c1Handler.dataPtr++;
 			i2c1Handler.dataLen--;
@@ -98,8 +91,8 @@ void I2C1_EV_IRQHandler(void)
 		{
 			if (i2c1Handler.dataLen == 0)
 			{
-				I2C_ITConfig(I2C1, I2C_IT_EVT, DISABLE);
 				I2C_GenerateSTOP(I2C1, ENABLE);
+				I2C_ITConfig(I2C1, I2C_IT_EVT, DISABLE);
 				xSemaphoreGiveFromISR(i2c1Handler.finishSemaphore, NULL);
 			}
 			else
@@ -107,6 +100,47 @@ void I2C1_EV_IRQHandler(void)
 				I2C_SendData(I2C1, i2c1Handler.dataPtr[0]);
 				i2c1Handler.dataPtr++;
 				i2c1Handler.dataLen--;
+			}
+		}
+	}
+	else //i2c1Handler.direction == I2C_Direction_Receiver
+	{
+		if(I2C_GetITStatus(I2C1, I2C_IT_SB)== SET)
+		{
+			I2C_Send7bitAddress(I2C1, i2c1Handler.slaveAddr, I2C_Direction_Receiver);
+			I2C_ITConfig(I2C1, I2C_IT_BUF, ENABLE); // wait RXNE
+		}
+		else if(I2C_GetITStatus(I2C1, I2C_IT_ADDR)== SET)
+		{
+			if (i2c1Handler.dataLen == 1)
+				I2C_AcknowledgeConfig(I2C1, DISABLE);
+
+			// reading SR1 register followed reading SR2 to clear ADDR register
+			(void) (I2C1->SR1);
+			(void) (I2C1->SR2);
+
+			if (i2c1Handler.dataLen == 1)
+			{
+				// interrupt is enabled at I2C_IT_SB. wait RXNE
+				I2C_GenerateSTOP(I2C1, ENABLE);
+			}
+		}
+		else if ((I2C_GetITStatus(I2C1, I2C_IT_RXNE) == SET) && (I2C_GetITStatus(I2C1, I2C_IT_BTF) == RESET))
+		{
+			i2c1Handler.dataPtr[0] = I2C_ReceiveData(I2C1);
+			i2c1Handler.dataPtr++;
+			i2c1Handler.dataLen--;
+
+			if (i2c1Handler.dataLen == 0x01)
+			{
+				I2C_AcknowledgeConfig(I2C1, DISABLE);
+				I2C_GenerateSTOP(I2C1, ENABLE);
+			}
+
+			if (i2c1Handler.dataLen == 0x00)
+			{
+				I2C_ITConfig(I2C1, (I2C_IT_EVT | I2C_IT_BUF), DISABLE);
+				xSemaphoreGiveFromISR(i2c1Handler.finishSemaphore, NULL);
 			}
 		}
 	}
@@ -123,7 +157,6 @@ void I2C1_EV_IRQHandler(void)
  */
 int32_t I2C1_Write(uint8_t slaveAddr, uint16_t regAddr, uint8_t regAddrLen, uint8_t *data, uint8_t length)
 {
-    // ENTR_CRT_SECTION();
 	xSemaphoreTake(i2c1Handler.lock, portMAX_DELAY );
 
 	if ((regAddrLen + length) > I2C_MAX_TRANSFER_LENGTH) return I2C_PARAMERET_ERROR;
@@ -154,7 +187,7 @@ int32_t I2C1_Write(uint8_t slaveAddr, uint16_t regAddr, uint8_t regAddrLen, uint
 	I2C_ITConfig(I2C1, I2C_IT_EVT, ENABLE);
 	I2C_GenerateSTART(I2C1, ENABLE);	// START condition
 
-	xSemaphoreTake(i2c1Handler.finishSemaphore, 10);
+	xSemaphoreTake(i2c1Handler.finishSemaphore, portMAX_DELAY);
 
 	xSemaphoreGive(i2c1Handler.lock);
 
@@ -163,86 +196,68 @@ int32_t I2C1_Write(uint8_t slaveAddr, uint16_t regAddr, uint8_t regAddrLen, uint
 }
 
 /**
- * @brief  Reads a block of data from the MPU6050.
- * @param  slaveAddr  : slave address MPU6050_DEFAULT_ADDRESS
- * @param  pBuffer : pointer to the buffer that receives the data read from the MPU6050.
- * @param  readAddr : MPU6050's internal address to read from.
- * @param  NumByteToRead : number of bytes to read from the MPU6050 ( NumByteToRead >1  only for the Mgnetometer readinf).
- * @return None
+ * @brief Read data from I2C1
+ * @param slaveAddr		support 7 bit only
+ * @param regAddr		device internal register address
+ * @param regAddrLen	8 bits or 16 bits, depend on device
+ * @param data
+ * @param length
+ * @return status
  */
-void I2C1_BufferRead(uint8_t slaveAddr, uint8_t* pBuffer, uint8_t readAddr, uint16_t NumByteToRead)
+int32_t I2C1_Read(uint8_t slaveAddr, uint16_t regAddr, uint8_t regAddrLen, uint8_t *data, uint8_t length)
 {
-    // ENTR_CRT_SECTION();
+	xSemaphoreTake(i2c1Handler.lock, portMAX_DELAY );
 
-	I2C_ITConfig(I2C1, I2C_IT_BUF | I2C_IT_EVT | I2C_IT_ERR, DISABLE);
+	if (regAddrLen > I2C_MAX_TRANSFER_LENGTH || length > I2C_MAX_TRANSFER_LENGTH ) return I2C_PARAMERET_ERROR;
+
+	if( regAddrLen == 2 )
+	{
+		i2c1Handler.data[0] = (regAddr >> 8);
+		i2c1Handler.data[1] = (regAddr & 0xff);
+	}
+	else if( regAddrLen == 1 )
+	{
+		i2c1Handler.data[0] = (regAddr & 0xff);
+	}
+	else
+	{
+		return I2C_PARAMERET_ERROR;
+	}
+
+
+	// Send register address first
+	i2c1Handler.dataLen = regAddrLen;
+	i2c1Handler.dataPtr = i2c1Handler.data;
+	i2c1Handler.slaveAddr = slaveAddr;
+	i2c1Handler.direction = I2C_Direction_Transmitter;
 
     /* While the bus is busy */
-    while (I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+    //while (I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
 
-    /* Send START condition */
-    I2C_GenerateSTART(I2C1, ENABLE);
+	I2C_ITConfig(I2C1, I2C_IT_EVT, ENABLE);
+	I2C_GenerateSTART(I2C1, ENABLE);	// START condition
 
-    /* Test on EV5 and clear it */
-    while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
+	xSemaphoreTake(i2c1Handler.finishSemaphore, portMAX_DELAY);
 
-    /* Send slave address for write */
-    I2C_Send7bitAddress(I2C1, slaveAddr, I2C_Direction_Transmitter);
+	i2c1Handler.dataLen = length;
+	i2c1Handler.dataPtr = i2c1Handler.data;
+	i2c1Handler.direction = I2C_Direction_Receiver;
 
-    /* Test on EV6 and clear it */
-    while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED));
+	I2C_ITConfig(I2C1, I2C_IT_EVT, ENABLE);
+	I2C_GenerateSTART(I2C1, ENABLE);	// START condition
 
-    /* Clear EV6 by setting again the PE bit */
-    I2C_Cmd(I2C1, ENABLE);
-
-    /* Send the register address */
-	I2C_SendData(I2C1, readAddr);
-
-    /* Test on EV8 and clear it */
-    while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
-
-    /* Send STRAT condition a second time */
-    I2C_GenerateSTART(I2C1, ENABLE);
-
-    /* Test on EV5 and clear it */
-    while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
-
-    /* Send MPU6050 address for read */
-    I2C_Send7bitAddress(I2C1, slaveAddr, I2C_Direction_Receiver);
-
-    /* Test on EV6 and clear it */
-    while (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED));
-
-    /* While there is data to be read */
-    while (NumByteToRead)
-    {
-        if (NumByteToRead == 1)
-        {
-            /* Disable Acknowledgement */
-            I2C_AcknowledgeConfig(I2C1, DISABLE);
-
-            /* Send STOP Condition */
-            I2C_GenerateSTOP(I2C1, ENABLE);
-        }
-
-        /* Test on EV7 and clear it */
-        if (I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED))
-        {
-            /* Read a byte from the MPU6050 */
-            *pBuffer = I2C_ReceiveData(I2C1);
-
-            /* Point to the next location where the byte read will be saved */
-            pBuffer++;
-
-            /* Decrement the read bytes counter */
-            NumByteToRead--;
-        }
-    }
+    xSemaphoreTake(i2c1Handler.finishSemaphore, portMAX_DELAY);
 
     /* Enable Acknowledgement to be ready for another reception */
     I2C_AcknowledgeConfig(I2C1, ENABLE);
-    // EXT_CRT_SECTION();
-}
 
+	memcpy(data, i2c1Handler.data, length);
+
+	xSemaphoreGive(i2c1Handler.lock);
+
+	return I2C_TRANSFER_OK;
+
+}
 
 /**
  * @brief CLI I2C1 Read function
@@ -278,7 +293,8 @@ static BaseType_t I2C1_ReadCommand(char *pcWriteBuffer, size_t xWriteBufferLen, 
 	}
 
 	uint8_t data[2];
-	I2C1_BufferRead(slaveAddr * 2, data, regAddr, 2);
+	//I2C1_BufferRead(slaveAddr * 2, data, regAddr, 2);
+	I2C1_Read(slaveAddr * 2, regAddr, 1, (uint8_t *)(&data), 2);
 
 	sprintf(pcWriteBuffer, "Device:0x%04lx Reg:0x%04lx = %02x %02x\n", slaveAddr, regAddr, data[0], data[1]);
 	return pdFALSE;
