@@ -29,9 +29,13 @@
 
 /* Private define ------------------------------------------------------------*/
 #define I2C_MAX_TRANSFER_LENGTH					20
+#define I2C_TIMEOUT								(20*portTICK_PERIOD_MS)
 
 #define I2C_TRANSFER_OK							0
 #define I2C_PARAMERET_ERROR						-1
+#define I2C_PARAMERET_TIMEOUT					-2
+#define I2C_ACK_FAIL							-3
+
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
@@ -62,7 +66,7 @@ void I2C1_EV_IRQHandler(void)
 	{
 		if(I2C_GetITStatus(I2C1, I2C_IT_SB)== SET)
 		{
-			I2C_Send7bitAddress(I2C1, i2c1Handler.slaveAddr, I2C_Direction_Transmitter);
+			I2C_Send7bitAddress(I2C1, (i2c1Handler.slaveAddr << 1), I2C_Direction_Transmitter);
 		}
 		else if(I2C_GetITStatus(I2C1, I2C_IT_ADDR)== SET)
 		{
@@ -107,7 +111,7 @@ void I2C1_EV_IRQHandler(void)
 	{
 		if(I2C_GetITStatus(I2C1, I2C_IT_SB)== SET)
 		{
-			I2C_Send7bitAddress(I2C1, i2c1Handler.slaveAddr, I2C_Direction_Receiver);
+			I2C_Send7bitAddress(I2C1, (i2c1Handler.slaveAddr << 1), I2C_Direction_Receiver);
 			I2C_ITConfig(I2C1, I2C_IT_BUF, ENABLE); // wait RXNE
 		}
 		else if(I2C_GetITStatus(I2C1, I2C_IT_ADDR)== SET)
@@ -144,6 +148,16 @@ void I2C1_EV_IRQHandler(void)
 			}
 		}
 	}
+
+	if( I2C_GetITStatus(I2C1, I2C_IT_AF) )
+	{
+		I2C_GenerateSTOP(I2C1, ENABLE);
+		I2C_ClearITPendingBit(I2C1, I2C_IT_AF);
+		I2C_ITConfig(I2C1, (I2C_IT_EVT | I2C_IT_BUF), DISABLE);
+		i2c1Handler.status = I2C_ACK_FAIL;
+		xSemaphoreGiveFromISR(i2c1Handler.finishSemaphore, NULL);
+	}
+
 }
 
 /**
@@ -172,6 +186,7 @@ int32_t I2C1_Write(uint8_t slaveAddr, uint16_t regAddr, uint8_t regAddrLen, uint
 	}
 	else
 	{
+		xSemaphoreGive(i2c1Handler.lock);
 		return I2C_PARAMERET_ERROR;
 	}
 
@@ -180,18 +195,21 @@ int32_t I2C1_Write(uint8_t slaveAddr, uint16_t regAddr, uint8_t regAddrLen, uint
 	i2c1Handler.dataPtr = i2c1Handler.data;
 	i2c1Handler.slaveAddr = slaveAddr;
 	i2c1Handler.direction = I2C_Direction_Transmitter;
-
+	i2c1Handler.status = I2C_TRANSFER_OK;
     /* While the bus is busy */
     while (I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
 
-	I2C_ITConfig(I2C1, I2C_IT_EVT, ENABLE);
+	I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_ERR, ENABLE);
 	I2C_GenerateSTART(I2C1, ENABLE);	// START condition
 
-	xSemaphoreTake(i2c1Handler.finishSemaphore, portMAX_DELAY);
+	if ( xSemaphoreTake(i2c1Handler.finishSemaphore, I2C_TIMEOUT) != pdTRUE)
+		i2c1Handler.status = I2C_PARAMERET_TIMEOUT;
+
+	I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_ERR | I2C_IT_BUF, DISABLE);
 
 	xSemaphoreGive(i2c1Handler.lock);
 
-    return I2C_TRANSFER_OK;
+    return i2c1Handler.status;
 
 }
 
@@ -221,6 +239,7 @@ int32_t I2C1_Read(uint8_t slaveAddr, uint16_t regAddr, uint8_t regAddrLen, uint8
 	}
 	else
 	{
+		xSemaphoreGive(i2c1Handler.lock);
 		return I2C_PARAMERET_ERROR;
 	}
 
@@ -230,6 +249,7 @@ int32_t I2C1_Read(uint8_t slaveAddr, uint16_t regAddr, uint8_t regAddrLen, uint8
 	i2c1Handler.dataPtr = i2c1Handler.data;
 	i2c1Handler.slaveAddr = slaveAddr;
 	i2c1Handler.direction = I2C_Direction_Transmitter;
+	i2c1Handler.status = I2C_TRANSFER_OK;
 
     /* While the bus is busy */
     //while (I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
@@ -237,25 +257,49 @@ int32_t I2C1_Read(uint8_t slaveAddr, uint16_t regAddr, uint8_t regAddrLen, uint8
 	I2C_ITConfig(I2C1, I2C_IT_EVT, ENABLE);
 	I2C_GenerateSTART(I2C1, ENABLE);	// START condition
 
-	xSemaphoreTake(i2c1Handler.finishSemaphore, portMAX_DELAY);
+	if ( xSemaphoreTake(i2c1Handler.finishSemaphore, I2C_TIMEOUT) != pdTRUE)
+	{
+		i2c1Handler.status = I2C_PARAMERET_TIMEOUT;
+		I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_ERR | I2C_IT_BUF, DISABLE);
+		xSemaphoreGive(i2c1Handler.lock);
+		return i2c1Handler.status;
+	}
+	else if ( i2c1Handler.status != I2C_TRANSFER_OK )
+	{
+	    xSemaphoreGive(i2c1Handler.lock);
+		return i2c1Handler.status;
+    }
 
 	i2c1Handler.dataLen = length;
 	i2c1Handler.dataPtr = i2c1Handler.data;
 	i2c1Handler.direction = I2C_Direction_Receiver;
+	i2c1Handler.status = I2C_TRANSFER_OK;
 
 	I2C_ITConfig(I2C1, I2C_IT_EVT, ENABLE);
 	I2C_GenerateSTART(I2C1, ENABLE);	// START condition
 
-    xSemaphoreTake(i2c1Handler.finishSemaphore, portMAX_DELAY);
+	if ( xSemaphoreTake(i2c1Handler.finishSemaphore, I2C_TIMEOUT) != pdTRUE)
+	{
+		i2c1Handler.status = I2C_PARAMERET_TIMEOUT;
+	}
+	else if ( i2c1Handler.status != I2C_TRANSFER_OK )
+	{
+	    xSemaphoreGive(i2c1Handler.lock);
+		return i2c1Handler.status;
+    }
+	else
+	{
+		memcpy(data, i2c1Handler.data, length);
+	}
 
-    /* Enable Acknowledgement to be ready for another reception */
+	I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_ERR | I2C_IT_BUF, DISABLE);
+
+	/* Enable Acknowledgement to be ready for another reception */
     I2C_AcknowledgeConfig(I2C1, ENABLE);
-
-	memcpy(data, i2c1Handler.data, length);
 
 	xSemaphoreGive(i2c1Handler.lock);
 
-	return I2C_TRANSFER_OK;
+	return i2c1Handler.status;
 
 }
 
@@ -270,7 +314,10 @@ static BaseType_t I2C1_ReadCommand(char *pcWriteBuffer, size_t xWriteBufferLen, 
 {
 	const char *parameterPtr;
 	int32_t paramterLen;
-	uint32_t slaveAddr, regAddr;
+
+	int32_t ret;
+	uint32_t slaveAddr, regAddr, data = 0;
+	uint16_t regAddrLen, dataLen;
 
 	parameterPtr = FreeRTOS_CLIGetParameter(pcCommandString, 1, &paramterLen);
 	if (paramterLen > 3 && parameterPtr[0] == '0' && parameterPtr[1] == 'x')
@@ -286,26 +333,48 @@ static BaseType_t I2C1_ReadCommand(char *pcWriteBuffer, size_t xWriteBufferLen, 
 	if (paramterLen > 3 && parameterPtr[0] == '0' && parameterPtr[1] == 'x')
 	{
 		regAddr = HexToInt((char *) parameterPtr, paramterLen);
+		regAddrLen = (paramterLen - 2) / 2;
 	}
 	else
 	{
 		regAddr = DecToInt((char *) parameterPtr, paramterLen);
+		regAddrLen = (regAddr >= 256) ? 2 : 1;
 	}
 
-	uint8_t data[2];
-	//I2C1_BufferRead(slaveAddr * 2, data, regAddr, 2);
-	I2C1_Read(slaveAddr * 2, regAddr, 1, (uint8_t *)(&data), 2);
+	parameterPtr = FreeRTOS_CLIGetParameter(pcCommandString, 3, &paramterLen);
+	if (paramterLen > 3 && parameterPtr[0] == '0' && parameterPtr[1] == 'x')
+	{
+		dataLen = HexToInt((char *) parameterPtr, paramterLen);
+	}
+	else
+	{
+		dataLen = DecToInt((char *) parameterPtr, paramterLen);
+	}
 
-	sprintf(pcWriteBuffer, "Device:0x%04lx Reg:0x%04lx = %02x %02x\n", slaveAddr, regAddr, data[0], data[1]);
+	dataLen = (dataLen > 4) ? 4 : dataLen;
+	dataLen = (dataLen < 1) ? 1 : dataLen;
+
+	ret = I2C1_Read(slaveAddr, regAddr, regAddrLen, (uint8_t *)(&data), dataLen);
+
+	if( ret == I2C_TRANSFER_OK )
+		sprintf(pcWriteBuffer, "Device:0x%04lx Reg:0x%04lx = %08lx\n", slaveAddr, regAddr, data);
+	else
+	{
+		I2C_ClearFlag(I2C1, I2C_FLAG_AF);
+		sprintf(pcWriteBuffer, "I2C1 Error %ld!!!!\n", ret);
+	}
+
+
+
 	return pdFALSE;
 }
 
 static const CLI_Command_Definition_t m_I2c1Read =
 {
 	"i2cr", /* The command string to type. */
-	"i2cr [slave address] [register address]\n\tRead data from I2C1\n",
+	"i2cr [slave address] [register address] [data length]\n\tRead data from I2C1. Max data length is 4 bytes.\n",
 	I2C1_ReadCommand, /* The function to run. */
-	2 /* No parameters are expected. */
+	3 /* No parameters are expected. */
 };
 
 /**
@@ -319,8 +388,10 @@ static BaseType_t I2C1_WriteCommand(char *pcWriteBuffer, size_t xWriteBufferLen,
 {
 	const char *parameterPtr;
 	int32_t paramterLen;
-	uint32_t slaveAddr, regAddr;
-	uint16_t data;
+
+	int32_t ret;
+	uint32_t slaveAddr, regAddr, data;
+	uint16_t regAddrLen, dataLen;
 
 	parameterPtr = FreeRTOS_CLIGetParameter(pcCommandString, 1, &paramterLen);
 	if (paramterLen > 3 && parameterPtr[0] == '0' && parameterPtr[1] == 'x')
@@ -336,32 +407,49 @@ static BaseType_t I2C1_WriteCommand(char *pcWriteBuffer, size_t xWriteBufferLen,
 	if (paramterLen > 3 && parameterPtr[0] == '0' && parameterPtr[1] == 'x')
 	{
 		regAddr = HexToInt((char *) parameterPtr, paramterLen);
+		regAddrLen = (paramterLen - 2) / 2;
 	}
 	else
 	{
 		regAddr = DecToInt((char *) parameterPtr, paramterLen);
+		regAddrLen = (regAddr >= 256) ? 2 : 1;
 	}
 
 	parameterPtr = FreeRTOS_CLIGetParameter(pcCommandString, 3, &paramterLen);
 	if (paramterLen > 3 && parameterPtr[0] == '0' && parameterPtr[1] == 'x')
 	{
 		data = HexToInt((char *) parameterPtr, paramterLen);
+		dataLen = (paramterLen - 2) / 2;
+		dataLen = (dataLen > 4) ? 4 : dataLen;
+		dataLen = (dataLen < 1) ? 1 : dataLen;
 	}
 	else
 	{
 		data = DecToInt((char *) parameterPtr, paramterLen);
+
+		if ( data <= 0x000000ff) dataLen = 1;
+		else if (( data <= 0x0000ffff)) dataLen = 2;
+		else if (( data <= 0x00ffffff)) dataLen = 3;
+		else dataLen = 4;
 	}
 
-	I2C1_Write(slaveAddr * 2, regAddr, 1, (uint8_t *)(&data), 2);
+	ret = I2C1_Write(slaveAddr, regAddr, regAddrLen, (uint8_t *)(&data), regAddrLen);
 
-	sprintf(pcWriteBuffer, "Device:0x%02lx Reg:0x%04lx = %02x\n", slaveAddr, regAddr, data);
+	if( ret == I2C_TRANSFER_OK )
+		sprintf(pcWriteBuffer, "Device:0x%02lx Reg:0x%04lx = %08lx\n", slaveAddr, regAddr, data);
+	else
+	{
+		I2C_ClearFlag(I2C1, I2C_FLAG_AF);
+		sprintf(pcWriteBuffer, "I2C1 Error %ld!!!!\n", ret);
+	}
+
 	return pdFALSE;
 }
 
 static const CLI_Command_Definition_t m_I2c1Write =
 {
 	"i2cw", /* The command string to type. */
-	"i2cw [slave address] [register address] [data]\n\tWrite data to I2C1\n",
+	"i2cw [slave address] [register address] [data]\n\tWrite data to I2C1. Max data length is 4 bytes.\n",
 	I2C1_WriteCommand, /* The function to run. */
 	3 /* No parameters are expected. */
 };
@@ -371,7 +459,6 @@ static const CLI_Command_Definition_t m_I2c1Write =
  */
 void I2C1_Init(void)
 {
-
 	i2c1Handler.lock = xSemaphoreCreateMutex();
 	i2c1Handler.finishSemaphore = xSemaphoreCreateBinary();
 
