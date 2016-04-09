@@ -138,12 +138,24 @@ void DEBUG_Init(void)
  */
 void DEBUG_SendData(uint16_t Data)
 {
+	if (Data == '\r')	return;
+
 #if DEBUG_PORT == DEBUG_PORT_USART2
+	if (Data == '\n')
+	{
+		USART_SendData(USART2, '\r');
+		while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
+	}
 	USART_SendData(USART2, Data);
-    while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
+	while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
 #elif DEBUG_PORT == DEBUG_PORT_USART3
+	if (Data == '\n')
+	{
+		USART_SendData(USART3, '\r');
+		while(USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
+	}
 	USART_SendData(USART3, Data);
-    while(USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
+	while(USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
 #endif
 }
 /**

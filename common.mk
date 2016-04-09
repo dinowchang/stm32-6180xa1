@@ -17,6 +17,7 @@ OBJDUMP  = arm-none-eabi-objdump
 ######################################################################################
 # Shell command
 ######################################################################################
+ifeq ($(OS),Windows_NT)
 SHELL				= sh.exe
 ECHO				= echo.exe
 RM					= rm.exe
@@ -24,6 +25,15 @@ MKDIR				= mkdir.exe
 TOUCH				= touch.exe
 DOXYGEN				= doxygen.exe
 OPENOCD				= openocd.exe
+else
+SHELL				= bash
+ECHO				= echo
+RM					= rm
+MKDIR				= mkdir
+TOUCH				= touch
+DOXYGEN				= doxygen
+OPENOCD				= openocd
+endif
 
 ######################################################################################
 # Custom options for cortex-m and cortex-r processors 
@@ -57,10 +67,12 @@ CORTEX_R5_HWFP_LIB_PATH = $(GCC_LIB)armv7-r/thumb/fpu
 
 ######################################################################################
 # Project Configuration ( from makfile )
-#     PROJECT_NAME          = name of target to build
-#     PROJECT_SOURCE        = all source file , including .c & .s
-#     PROJECT_INC_PATHS
-#     PROJECT_LIBRARY
+#	PROJECT_NAME				= name of target to build
+#	PROJECT_SOURCE				= all source file , including .c & .s
+#	PROJECT_INC_PATHS
+#	PROJECT_LIBRARY
+#	PROJECT_DOXYGEN_CONFIG
+#	PROJECT_OPENOCD_CONFIG
 ######################################################################################
 TARGET				= $(PROJECT_NAME)
 SOURCE_FOR_S		= $(foreach s_source_file, $(PROJECT_SOURCE),$(filter %.s, $(s_source_file)))
