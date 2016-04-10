@@ -108,3 +108,9 @@ sinclude $(TOP)/common.mk
 
 # Force to update the builded time in main.c
 obj/command.o : force 
+
+obj/command.c.d : inc/gitversion.h
+
+inc/gitversion.h: .git/HEAD .git/index
+	@echo -e "#define GIT_VERSION\t\t\"$(shell git rev-parse --short HEAD)\"" > $@
+ 

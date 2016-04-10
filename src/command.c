@@ -16,6 +16,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include <string.h>
 #include "config.h"
+#include "gitversion.h"
 #include "assert.h"
 #include "type.h"
 #include "stm32f4xx.h"
@@ -64,6 +65,7 @@ static void COMM_Task( void *pvParameters )
 
 	outputString = FreeRTOS_CLIGetOutputBuffer();
 	DEBUG_printf(DBG_COMM, "\nBuild on %s at %s. ", __DATE__, __TIME__);
+	DEBUG_printf(DBG_COMM, "Git Version : %s\n", GIT_VERSION);
 	DEBUG_printf(DBG_COMM, "%s", pcWelcomeMessage);
 	fflush(stdout);
 
