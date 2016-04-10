@@ -15,6 +15,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "config.h"
+#include "gitversion.h"
 #include "type.h"
 #include "stm32f4xx.h"
 #include "FreeRTOS.h"
@@ -45,9 +46,9 @@ int main(void)
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 
 	DEBUG_Init();
-	DEBUG_printf(DBG_SYSINFO, "\nBuild on %s at %s\n", __DATE__, __TIME__);
+	DEBUG_printf(DBG_SYSINFO, "\n\nBuild on %s at %s\n", __DATE__, __TIME__);
+	DEBUG_printf(DBG_SYSINFO, "Git Version : %s\n", GIT_VERSION);
 	DEBUG_printf(DBG_SYSINFO, "System clock = %ld Hz\n", SystemCoreClock);
-	DEBUG_printf(DBG_SYSINFO, "Hello World\n");
 
 	Blink_Init();
 	COMM_Init();

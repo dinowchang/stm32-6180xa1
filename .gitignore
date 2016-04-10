@@ -6,3 +6,5 @@
 # Ignore binary and object file made by makefile
 /bin/
 /obj/
+inc/gitversion.h
+
